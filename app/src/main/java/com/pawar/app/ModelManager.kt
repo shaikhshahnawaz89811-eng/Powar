@@ -139,7 +139,7 @@ class ModelManager(private val context: Context) {
             // GGUF uses little-endian uint32 for its version. Current llama.cpp
             // defines GGUF_VERSION as 3, so reject malformed/unsupported versions
             // before the file reaches the runtime.
-            val version = input.readInt().reverseBytes()
+            val version = Integer.reverseBytes(input.readInt())
             if (version != GGUF_VERSION) {
                 error("Unsupported GGUF version: $version. Expected $GGUF_VERSION.")
             }

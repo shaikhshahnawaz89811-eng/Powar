@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -66,16 +67,16 @@ private fun AttachmentOption(label: String, icon: AttachmentIcon, onClick: () ->
 @Composable
 private fun CameraIcon() {
     Canvas(Modifier.size(25.dp)) {
-        drawRoundRect(androidx.compose.ui.graphics.Color(0xFF555754), left = 3.dp.toPx(), top = 7.dp.toPx(), right = size.width - 3.dp.toPx(), bottom = size.height - 5.dp.toPx(), cornerRadius = CornerRadius(4.dp.toPx()))
+        drawRoundRect(color = androidx.compose.ui.graphics.Color(0xFF555754), topLeft = Offset(3.dp.toPx(), 7.dp.toPx()), size = Size(size.width - 6.dp.toPx(), size.height - 12.dp.toPx()), cornerRadius = CornerRadius(4.dp.toPx()))
         drawCircle(androidx.compose.ui.graphics.Color(0xFFF0F1F4), 4.dp.toPx(), Offset(size.width / 2f, size.height * .60f))
-        drawRoundRect(androidx.compose.ui.graphics.Color(0xFF555754), left = size.width * .38f, top = 3.dp.toPx(), right = size.width * .62f, bottom = 8.dp.toPx(), cornerRadius = CornerRadius(2.dp.toPx()))
+        drawRoundRect(color = androidx.compose.ui.graphics.Color(0xFF555754), topLeft = Offset(size.width * .38f, 3.dp.toPx()), size = Size(size.width * .24f, 5.dp.toPx()), cornerRadius = CornerRadius(2.dp.toPx()))
     }
 }
 
 @Composable
 private fun PhotoIcon() {
     Canvas(Modifier.size(25.dp)) {
-        drawRoundRect(androidx.compose.ui.graphics.Color(0xFF555754), left = 2.dp.toPx(), top = 3.dp.toPx(), right = size.width - 2.dp.toPx(), bottom = size.height - 3.dp.toPx(), cornerRadius = CornerRadius(4.dp.toPx()), style = Stroke(width = 2.2.dp.toPx()))
+        drawRoundRect(color = androidx.compose.ui.graphics.Color(0xFF555754), topLeft = Offset(2.dp.toPx(), 3.dp.toPx()), size = Size(size.width - 4.dp.toPx(), size.height - 6.dp.toPx()), cornerRadius = CornerRadius(4.dp.toPx()), style = Stroke(width = 2.2.dp.toPx()))
         drawCircle(androidx.compose.ui.graphics.Color(0xFF555754), 2.dp.toPx(), Offset(size.width * .70f, size.height * .34f))
         val path = Path().apply {
             moveTo(size.width * .12f, size.height * .78f)

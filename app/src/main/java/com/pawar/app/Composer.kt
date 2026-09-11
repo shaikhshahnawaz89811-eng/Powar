@@ -24,13 +24,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.Alignment
@@ -39,11 +41,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Text
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -91,17 +95,26 @@ fun Composer(
                 ) { PlusIcon() }
 
                 Spacer(Modifier.width(22.dp))
+                val textState = rememberTextFieldState(value)
+                LaunchedEffect(textState) {
+                    snapshotFlow { textState.text.toString() }.collect { text ->
+                        if (text != value) onValueChange(text)
+                    }
+                }
+                LaunchedEffect(value) {
+                    if (textState.text.toString() != value) {
+                        textState.setTextAndPlaceCursorAtEnd(value)
+                    }
+                }
                 BasicTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
+                    state = textState,
+                    modifier = Modifier.weight(1f).onFocusChanged { if (it.isFocused) onInputFocused() },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = { onSend() }),
-                    onFocusChanged = { if (it.isFocused) onInputFocused() },
+                    onKeyboardAction = { onSend() },
+                    lineLimits = TextFieldLineLimits.SingleLine,
                     textStyle = TextStyle(color = Color(0xFF5D5E5B), fontSize = 20.sp),
-                    decorationBox = { inner ->
-                        if (value.isEmpty()) Text("Reply", color = Color(0xFFB6B7B4), fontSize = 22.sp)
+                    decorator = { inner ->
+                        if (textState.text.isEmpty()) Text("Reply", color = Color(0xFFB6B7B4), fontSize = 22.sp)
                         inner()
                     }
                 )
