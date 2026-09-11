@@ -10,13 +10,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -33,32 +31,31 @@ fun ThinDivider() {
 @Composable
 fun ActivityRow(leading: RowIcon, text: String, trailing: String? = null, showChevron: Boolean = false) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(88.dp).padding(horizontal = 22.dp),
+        modifier = Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         when (leading) {
             RowIcon.CLOCK -> ClockIcon()
             RowIcon.FOLDER -> FolderOutlineIcon()
         }
-        Spacer(Modifier.width(32.dp))
+        Spacer(Modifier.width(14.dp))
         Text(
             text,
             modifier = Modifier.weight(1f),
             color = androidx.compose.ui.graphics.Color(0xFF60615F),
-            fontSize = 21.sp,
-            lineHeight = 29.sp,
+            fontSize = 15.sp,
+            lineHeight = 20.sp,
             maxLines = if (trailing != null) 1 else 2
         )
         if (trailing != null) {
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(10.dp))
             Text(
                 trailing,
                 color = androidx.compose.ui.graphics.Color(0xFFA8A9A6),
-                fontSize = 20.sp,
+                fontSize = 12.sp,
                 maxLines = 1
             )
         }
-        Spacer(Modifier.weight(1f))
         if (showChevron) ChevronIcon()
     }
 }

@@ -91,11 +91,11 @@ fun Composer(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
-                    modifier = Modifier.size(58.dp).clip(CircleShape).background(Color(0xFFF0F1F4)).clickable(onClick = onPlus),
+                    modifier = Modifier.size(54.dp).clip(CircleShape).background(Color(0xFFF0F1F4)).clickable(onClick = onPlus),
                     contentAlignment = Alignment.Center
                 ) { PlusIcon() }
 
-                Spacer(Modifier.width(22.dp))
+                Spacer(Modifier.width(16.dp))
                 val textState = rememberTextFieldState(value)
                 LaunchedEffect(textState) {
                     snapshotFlow { textState.text.toString() }.collect { text ->
@@ -113,27 +113,27 @@ fun Composer(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     onKeyboardAction = { onSend() },
                     lineLimits = TextFieldLineLimits.SingleLine,
-                    textStyle = TextStyle(color = Color(0xFF5D5E5B), fontSize = 20.sp),
+                    textStyle = TextStyle(color = Color(0xFF5D5E5B), fontSize = 18.sp),
                     decorator = { inner ->
-                        if (textState.text.isEmpty()) Text("Reply", color = Color(0xFFB6B7B4), fontSize = 22.sp)
+                        if (textState.text.isEmpty()) Text("Reply", color = Color(0xFFB6B7B4), fontSize = 20.sp)
                         inner()
                     }
                 )
 
                 Box(
                     modifier = Modifier
-                        .height(54.dp)
+                        .height(50.dp)
                         .widthIn(min = 0.dp, max = 150.dp)
                         .clip(RoundedCornerShape(28.dp))
                         .border(1.dp, Color(0xFFE0E1DE), RoundedCornerShape(28.dp))
                         .padding(horizontal = 14.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Qwen2.5-Coder · Q4_K_M", color = Color(0xFF777975), fontSize = 16.sp, maxLines = 1)
+                    Text("Qwen2.5-Coder · Q4_K_M", color = Color(0xFF777975), fontSize = 14.sp, maxLines = 1)
                 }
-                Spacer(Modifier.width(14.dp))
+                Spacer(Modifier.width(10.dp))
                 Box(
-                    modifier = Modifier.size(58.dp).clip(CircleShape).background(Color(0xFF151515)).clickable(onClick = onSend),
+                    modifier = Modifier.size(54.dp).clip(CircleShape).background(Color(0xFF151515)).clickable(onClick = onSend),
                     contentAlignment = Alignment.Center
                 ) { SendArrowIcon() }
             }

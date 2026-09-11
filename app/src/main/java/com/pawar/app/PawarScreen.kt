@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -28,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -128,6 +131,7 @@ fun PawarScreen(modelManager: ModelManager, onOpenSettings: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .background(AppColors.AppBackground)
+            .safeDrawingPadding()
             .padding(top = 8.dp)
     ) {
         Column(
@@ -168,7 +172,8 @@ fun PawarScreen(modelManager: ModelManager, onOpenSettings: () -> Unit) {
                     AttachmentMenu(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
-                            .padding(bottom = 98.dp),
+                            .offset(y = (-104).dp)
+                            .zIndex(2f),
                         onCamera = ::openCamera,
                         onPhotos = ::openPhotos,
                         onZip = ::openZip

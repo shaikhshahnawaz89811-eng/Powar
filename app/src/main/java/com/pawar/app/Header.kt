@@ -28,7 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 @Composable
 fun OfflineHeader(onMenu: () -> Unit, moduleLoaded: Boolean) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(74.dp).clip(RoundedCornerShape(30.dp))
+        modifier = Modifier.fillMaxWidth().height(68.dp).clip(RoundedCornerShape(30.dp))
             .background(AppColors.CardBackground).border(1.dp, Color(0xFFECEDE9), RoundedCornerShape(30.dp))
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -38,11 +38,11 @@ fun OfflineHeader(onMenu: () -> Unit, moduleLoaded: Boolean) {
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text("Pawar", color = Color(0xFF262626), fontSize = 28.sp, lineHeight = 31.sp, fontWeight = FontWeight.SemiBold)
-            Text(if (moduleLoaded) "qwen2.5-coder-7b · loaded · 100% offline" else "qwen2.5-coder-7b · not loaded · 100% offline", color = AppColors.SecondaryText, fontSize = 18.sp, lineHeight = 23.sp, maxLines = 1)
+            Text("Pawar", color = Color(0xFF262626), fontSize = 22.sp, lineHeight = 25.sp, fontWeight = FontWeight.SemiBold)
+            Text(if (moduleLoaded) "qwen2.5-coder-7b · loaded · 100% offline" else "qwen2.5-coder-7b · not loaded · 100% offline", color = AppColors.SecondaryText, fontSize = 16.sp, lineHeight = 19.sp, maxLines = 1)
         }
-        Box(Modifier.size(34.dp).clip(RoundedCornerShape(17.dp)).background(if (moduleLoaded) AppColors.LightGreen else Color(0xFFF0F1F4)), contentAlignment = Alignment.Center) {
-            Box(Modifier.size(20.dp).clip(RoundedCornerShape(10.dp)).background(if (moduleLoaded) AppColors.Green else Color(0xFF9A9C98)))
+        Box(Modifier.size(30.dp).clip(RoundedCornerShape(17.dp)).background(if (moduleLoaded) AppColors.LightGreen else Color(0xFFF0F1F4)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(16.dp).clip(RoundedCornerShape(10.dp)).background(if (moduleLoaded) AppColors.Green else Color(0xFF9A9C98)))
         }
     }
 }

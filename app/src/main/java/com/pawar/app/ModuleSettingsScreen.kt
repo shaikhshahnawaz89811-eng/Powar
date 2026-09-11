@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -84,7 +85,10 @@ fun ModuleSettingsScreen(manager: ModelManager, onBack: () -> Unit) {
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().background(AppColors.AppBackground)
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppColors.AppBackground)
+            .safeDrawingPadding()
     ) {
         SettingsTopBar(onBack)
         Column(
@@ -172,7 +176,7 @@ private fun ModuleCard(
             }
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                Text("Qwen2.5-Coder", color = AppColors.PrimaryText, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                Text("Qwen2.5-Coder", color = AppColors.PrimaryText, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(ModelManager.EXPECTED_FILE_NAME, color = AppColors.SecondaryText, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text("1.04 GB · Q4_K_M · GGUF", color = AppColors.SecondaryText, fontSize = 12.sp)
             }

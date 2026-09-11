@@ -7,14 +7,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -26,9 +24,9 @@ fun UserBubble(text: String) {
                 .fillMaxWidth(0.86f)
                 .widthIn(max = 570.dp)
                 .background(AppColors.DarkBubble, RoundedCornerShape(36.dp))
-                .padding(horizontal = 34.dp, vertical = 27.dp)
+                .padding(horizontal = 24.dp, vertical = 20.dp)
         ) {
-            Text(text, color = androidx.compose.ui.graphics.Color.White, fontSize = 23.sp, lineHeight = 32.sp)
+            Text(text, color = androidx.compose.ui.graphics.Color.White, fontSize = 18.sp, lineHeight = 27.sp)
         }
     }
 }
@@ -39,8 +37,8 @@ fun AssistantText(text: String) {
         modifier = Modifier.padding(horizontal = 14.dp),
         text = text,
         color = AppColors.PrimaryText,
-        fontSize = 22.sp,
-        lineHeight = 34.sp
+        fontSize = 18.sp,
+        lineHeight = 28.sp
     )
 }
 
@@ -56,9 +54,9 @@ fun UserMessageWithAttachments(message: SentMessage) {
                 Box(
                     modifier = Modifier
                         .background(AppColors.DarkBubble, RoundedCornerShape(36.dp))
-                        .padding(horizontal = 34.dp, vertical = 27.dp)
+                        .padding(horizontal = 24.dp, vertical = 20.dp)
                 ) {
-                    Text(message.text, color = androidx.compose.ui.graphics.Color.White, fontSize = 23.sp, lineHeight = 32.sp)
+                    Text(message.text, color = androidx.compose.ui.graphics.Color.White, fontSize = 18.sp, lineHeight = 27.sp)
                 }
             }
         }
