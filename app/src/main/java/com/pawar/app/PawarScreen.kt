@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -30,10 +29,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.zIndex
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import androidx.core.content.FileProvider
 import java.io.File
 
@@ -169,15 +171,21 @@ fun PawarScreen(modelManager: ModelManager, onOpenSettings: () -> Unit) {
                     .imePadding()
             ) {
                 if (attachmentMenuOpen) {
-                    AttachmentMenu(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .offset(y = (-104).dp)
-                            .zIndex(2f),
-                        onCamera = ::openCamera,
-                        onPhotos = ::openPhotos,
-                        onZip = ::openZip
-                    )
+                    Popup(
+                        alignment = Alignment.BottomStart,
+                        offset = with(LocalDensity.current) {
+                            IntOffset(0, (-104).dp.roundToPx())
+                        },
+                        onDismissRequest = { attachmentMenuOpen = false },
+                        properties = PopupProperties(focusable = true, dismissOnClickOutside = true)
+                    ) {
+                        AttachmentMenu(
+                            modifier = Modifier,
+                            onCamera = ::openCamera,
+                            onPhotos = ::openPhotos,
+                            onZip = ::openZip
+                        )
+                    }
                 }
 
                 Composer(
