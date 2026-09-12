@@ -29,13 +29,31 @@ compiled**. Treat it as a real, honest first draft — not a verified build —
 the same way this project's own audits should have, and previously didn't
 for the model-load harness.
 
+## CI note (added after this pass)
+
+`CMakeLists.txt` now checks for a locally vendored `llama.cpp/` first, and if
+it's not there, fetches it itself via CMake's `FetchContent` pinned to
+`v0.4.0` (see the `PAWAR_LLAMA_CPP_TAG` cache variable). This is what lets
+`.github/workflows/android-ci.yml` build successfully with a plain
+`actions/checkout` and no submodule step — the CI runner has network access
+at configure time even though this sandbox doesn't. **This has not been run
+on an actual GitHub Actions runner yet** — it's written against real
+llama.cpp CMake conventions and a real current tag, but unverified the same
+way the rest of this file asks you to be honest about untested code. Watch
+the first CI run for anything the pinned tag needs adjusting for.
+
+If you still prefer a manually vendored copy (e.g. for a fully offline dev
+machine, or to control exactly which commit is used locally), the old path
+still works and takes priority automatically:
+```
+git submodule add https://github.com/ggml-org/llama.cpp app/src/main/cpp/llama.cpp
+cd app/src/main/cpp/llama.cpp && git checkout <a tag you've tested> && cd -
+```
+
 ## Steps to actually finish this yourself
 
-1. **Vendor llama.cpp** (pin a specific tag, don't track a moving branch):
-   ```
-   git submodule add https://github.com/ggml-org/llama.cpp app/src/main/cpp/llama.cpp
-   cd app/src/main/cpp/llama.cpp && git checkout <a tag you've tested> && cd -
-   ```
+1. ~~Vendor llama.cpp~~ — no longer required for CI; see the CI note above.
+   Still worth doing locally if you want a pinned, offline-buildable copy.
 2. **Install the NDK + CMake** via Android Studio → SDK Manager → SDK Tools.
 3. **Build**: `gradle :app:assembleDebug`. If llama.cpp's public API has
    moved since this was written, the compiler errors will point at exactly
