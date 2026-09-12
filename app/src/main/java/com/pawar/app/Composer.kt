@@ -62,16 +62,13 @@ fun Composer(
     onInputFocused: () -> Unit,
     onSend: () -> Unit
 ) {
-    val composerHeight = if (attachments.isNotEmpty()) 152.dp else 86.dp
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(composerHeight)
             .clip(RoundedCornerShape(44.dp))
             .background(AppColors.CardBackground)
             .border(1.dp, Color(0xFFE9EAE7), RoundedCornerShape(44.dp))
-            .padding(start = 14.dp, end = 10.dp),
+            .padding(start = 14.dp, end = 10.dp, top = 16.dp, bottom = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -87,7 +84,7 @@ fun Composer(
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
@@ -115,7 +112,7 @@ fun Composer(
                         .onFocusChanged { if (it.isFocused) onInputFocused() },
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                     onKeyboardAction = { onSend() },
-                    lineLimits = TextFieldLineLimits.SingleLine,
+                    lineLimits = TextFieldLineLimits.MultiLine(minHeightInLines = 1, maxHeightInLines = 5),
                     textStyle = TextStyle(color = Color(0xFF5D5E5B), fontSize = 18.sp),
                     decorator = { inner ->
                         // Overlay the hint and the real text in the same box so the field
