@@ -20,6 +20,10 @@ set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(LLAMA_BUILD_SERVER OFF CACHE BOOL "" FORCE)
 set(LLAMA_CURL OFF CACHE BOOL "" FORCE)
+# llama.cpp decoupled the `common` utility library from LLAMA_BUILD_EXAMPLES
+# a while back -- it now has its own gate. pawar_llama_jni.cpp links against
+# `common`, so this must be ON even though we don't build the examples.
+set(LLAMA_BUILD_COMMON ON CACHE BOOL "" FORCE)
 
 set(PAWAR_LLAMA_CPP_TAG "v0.4.0" CACHE STRING
     "llama.cpp tag/commit to fetch when no local copy is vendored")
