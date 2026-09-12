@@ -94,7 +94,19 @@ class ProjectWorkspace private constructor(
     }
 
     companion object {
+    private fun normalizeArchivePath(path: String): String {
+        val normalized = path.replace('\\', '/')
+        require(normalized.isNotBlank()) { "Archive path cannot be blank." }
+        require(!normalized.startsWith('/') && !normalized.contains('\u0000')) { "Unsafe archive path: $path" }
+        val parts = normalized.split('/').filter { it.isNotEmpty() && it != "." }
+        require(parts.none { it == ".." }) { "Unsafe archive path: $path" }
+        val result = parts.joinToString("/")
+        require(result.isNotBlank()) { "Archive path cannot resolve to the workspace root: $path" }
+        return result
+    }
+
         private const val MAX_TEXT_FILE_BYTES = 2L * 1024L * 1024L
+        private const val MAX_ARCHIVE_BYTES = 32L * 1024L * 1024L
         private const val MAX_ENTRIES = 2_000
         private const val MAX_TOTAL_EXTRACTED_BYTES = 128L * 1024L * 1024L
 
@@ -107,7 +119,19 @@ class ProjectWorkspace private constructor(
             val archive = File.createTempFile("pawar-source-", ".zip", context.cacheDir)
             try {
                 context.contentResolver.openInputStream(attachment.uri)?.use { input ->
-                    archive.outputStream().use { output -> input.copyTo(output, 64 * 1024) }
+                    archive.outputStream().use { output ->
+                        val buffer = ByteArray(64 * 1024)
+                        var copied = 0L
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read <= 0) break
+                            copied += read
+                            require(copied <= MAX_ARCHIVE_BYTES) {
+                                "Archive exceeds the safe ${MAX_ARCHIVE_BYTES / (1024 * 1024)} MiB input limit."
+                            }
+                            output.write(buffer, 0, read)
+                        }
+                    }
                 } ?: error("Could not open the ZIP attachment.")
 
                 ZipFile(archive).use { zip ->
@@ -116,12 +140,8 @@ class ProjectWorkspace private constructor(
                     val normalizedSeen = HashSet<String>()
                     var extractedBytes = 0L
                     for (entry in entries) {
-                        val normalized = entry.name.replace('\\', '/')
-                        require(!normalized.startsWith('/') && !normalized.contains('\u0000')) { "Unsafe archive path: ${entry.name}" }
-                        require(normalized.split('/').none { it == ".." }) { "Unsafe archive path: ${entry.name}" }
-                        if (!entry.isDirectory) {
-                            require(normalizedSeen.add(normalized)) { "Duplicate archive path: $normalized" }
-                        }
+                        val normalized = normalizeArchivePath(entry.name)
+                        require(normalizedSeen.add(normalized)) { "Duplicate archive path: $normalized" }
                         if (entry.isDirectory) {
                             val dir = File(root, normalized).canonicalFile
                             require(dir.path == root.canonicalPath || dir.path.startsWith(root.canonicalPath + File.separator))

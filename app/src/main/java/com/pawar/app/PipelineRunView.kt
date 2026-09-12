@@ -30,7 +30,7 @@ fun PipelineRunView(
     onOptionSelected: ((AgentOption) -> Unit)? = null,
     onShareArtifact: ((String) -> Unit)? = null
 ) {
-    var expanded by remember(run.steps.size, run.complete) { mutableStateOf(run.steps.size <= 3) }
+    var expanded by remember(run.steps.size, run.complete) { mutableStateOf(!run.complete) }
 
     Column(
         modifier = Modifier.fillMaxWidth().padding(top = 8.dp)

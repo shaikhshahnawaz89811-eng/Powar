@@ -25,8 +25,10 @@ object TaskPlanner {
         val codeRequest = containsAny(
             normalized,
             "write code", "code likho", "code likh", "generate code", "code bana",
-            "function likho", "class likho", "snippet"
-        )
+            "function likho", "class likho", "snippet", "code do", "code chahiye"
+        ) || (containsAny(normalized, "code") && containsAny(
+            normalized, "python", "kotlin", "java", "javascript", "typescript", "c++", "cpp", "rust", "go"
+        ))
         val outputMode = when {
             explicitOutputMode != OutputMode.NORMAL_RESPONSE -> explicitOutputMode
             intent in setOf(TaskIntent.MODIFY, TaskIntent.FIX) -> {
@@ -54,8 +56,9 @@ object TaskPlanner {
         containsAny(
             text,
             "sirf code", "sirf kotlin code", "sirf java code", "only code",
-            "code only", "just code", "write code only", "just write the code"
-        ) -> OutputMode.CODE_ONLY
+            "code only", "just code", "write code only", "just write the code",
+            "bas code", "bas python code", "bas kotlin code", "bas java code", "kuch nahin bas"
+        ) || Regex("(?:sirf|only|just|bas)\\s+(?:python|kotlin|java|javascript|typescript|c\\+\\+|cpp|rust|go)\\s+code(?:\\s|$)").containsMatchIn(text) -> OutputMode.CODE_ONLY
         containsAny(
             text,
             "options only", "sirf options", "only options", "mere options batao",
@@ -78,9 +81,12 @@ object TaskPlanner {
             return TaskIntent.CREATE
         }
         return when {
-            containsAny(text, "fix", "bug", "error", "crash", "repair", "debug", "issue", "ठीक", "गलती") -> TaskIntent.FIX
+            containsAny(text, "find error", "find errors", "find bug", "find bugs", "find the error", "find the bug", "error find", "errors find", "bug find", "bugs find", "error dhundo", "bug dhundo", "error dhoondo", "bug dhoondo", "गलती ढूंढ", "बग ढूंढ") -> TaskIntent.INSPECT
+            containsAny(text, "fix", "repair", "debug", "patch", "resolve", "ठीक", "सुधार") -> TaskIntent.FIX
+            containsAny(text, "bug", "error", "crash", "issue", "exception", "failure", "गलती", "बग") -> TaskIntent.FIX
             containsAny(text, "modify", "change", "update", "add", "implement", "replace", "remove", "बदल", "जोड़", "बनाओ", "बना") -> TaskIntent.MODIFY
             containsAny(text, "create", "build", "make", "generate", "new project", "new app", "website", "बनाना", "तैयार") -> TaskIntent.CREATE
+            (containsAny(text, "code") && containsAny(text, "likho", "likh", "do", "chahiye", "write", "generate")) -> TaskIntent.CREATE
             containsAny(text, "inspect", "analyze", "analyse", "review", "audit", "read", "देख", "जांच") -> TaskIntent.INSPECT
             containsAny(text, "explain", "why", "what is", "how does", "क्यों", "समझाओ") -> TaskIntent.EXPLAIN
             containsAny(text, "research", "search", "latest", "documentation", "compare", "तुलना", "रिसर्च") -> TaskIntent.RESEARCH
@@ -93,7 +99,7 @@ object TaskPlanner {
         containsAny(text, "website", "web app", "frontend", "react", "next.js", "html", "css", "javascript", "typescript") -> ProjectType.WEB
         containsAny(text, "python", "django", "flask", "fastapi", "pandas") -> ProjectType.PYTHON
         containsAny(text, "c++", "cpp", "cmake", "native", "embedded") -> ProjectType.NATIVE
-        containsAny(text, "kotlin/jvm", "kotlin jvm", "jvm", "java", "spring", "gradle project", "kotlin project") -> ProjectType.JVM
+        containsAny(text, "kotlin/jvm", "kotlin jvm", "jvm", "java", "spring", "gradle project", "kotlin project", "kotlin") -> ProjectType.JVM
         containsAny(text, "rust", "cargo") -> ProjectType.RUST
         containsAny(text, "golang", "go service", "go project") -> ProjectType.GO
         else -> ProjectType.GENERIC

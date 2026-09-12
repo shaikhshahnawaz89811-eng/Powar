@@ -129,12 +129,13 @@ fun PawarScreen(modelManager: ModelManager, onOpenSettings: () -> Unit) {
         context.startActivity(Intent.createChooser(intent, "Share Pawar ZIP"))
     }
 
-    fun send(textOverride: String? = null) {
+    fun send(textOverride: String? = null, continuationRun: PipelineRun? = null) {
         val trimmed = (textOverride ?: input).trim()
         if (trimmed.isNotEmpty() || composerAttachments.isNotEmpty()) {
             val message = SentMessage(trimmed, composerAttachments.toList())
-            val previousRun = conversationTurns.lastOrNull()?.pipeline
-                ?.takeIf { it.status == AgentStatus.WAITING_FOR_USER }
+            val previousRun = continuationRun ?: conversationTurns.asReversed()
+                .mapNotNull { it.pipeline }
+                .firstOrNull { it.status == AgentStatus.WAITING_FOR_USER }
             val turnIndex = conversationTurns.size
             conversationTurns.add(ConversationTurn(message))
             input = ""
@@ -198,7 +199,7 @@ fun PawarScreen(modelManager: ModelManager, onOpenSettings: () -> Unit) {
                     turn.pipeline?.let { run ->
                         PipelineRunView(
                             run,
-                            onOptionSelected = { option -> send(option.id) },
+                            onOptionSelected = { option -> send(option.id, run) },
                             onShareArtifact = ::shareArtifact
                         )
                     }

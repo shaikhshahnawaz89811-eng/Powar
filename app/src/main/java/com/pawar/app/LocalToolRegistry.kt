@@ -27,6 +27,7 @@ class LocalToolRegistry(context: Context) {
         "attachment-inspection",
         "zip-safe-listing",
         "image-metadata",
+        "static-project-diagnostics",
         projectWorkspaceCapability.id,
         projectGeneratorCapability.id
     )
@@ -36,6 +37,36 @@ class LocalToolRegistry(context: Context) {
 
     suspend fun createStarterProject(profile: TaskProfile, projectName: String): Result<ProjectWorkspace> =
         projectGeneratorCapability.create(profile, projectName)
+
+    suspend fun diagnose(workspace: ProjectWorkspace): ToolResult =
+        runCatching {
+            val report = ProjectDiagnostics.inspect(workspace)
+            val errors = report.findings.filter { it.severity == DiagnosticSeverity.ERROR }
+            val warnings = report.findings.filter { it.severity == DiagnosticSeverity.WARNING }
+            val infos = report.findings.filter { it.severity == DiagnosticSeverity.INFO }
+            val details = buildString {
+                append("Scanned ${report.filesScanned} text file(s). ")
+                append("${errors.size} error(s), ${warnings.size} warning(s), ${infos.size} info item(s).")
+                report.findings.take(20).forEach { finding ->
+                    append("\n")
+                    append(finding.severity.name)
+                    if (finding.path != null) append(" ${finding.path}")
+                    if (finding.line != null) append(":${finding.line}")
+                    append(" — ${finding.message}")
+                }
+                if (report.findings.size > 20) append("\nAdditional findings omitted from the compact activity view.")
+            }
+            // The diagnostic operation itself succeeded even when it found source errors.
+            // Findings are evidence for the agent; they must not masquerade as a failed tool call.
+            ToolResult(
+                toolId = "static-project-diagnostics",
+                success = true,
+                summary = if (report.hasErrors) "Static diagnostics found ${errors.size} error(s)" else "Static diagnostics completed with no syntax-level errors",
+                detail = details
+            )
+        }.getOrElse { error ->
+            ToolResult("static-project-diagnostics", false, "Static diagnostics failed", error.message ?: "Could not inspect project files.")
+        }
 
     suspend fun inspect(attachments: List<Attachment>): List<ToolResult> =
         attachments.map { attachment ->

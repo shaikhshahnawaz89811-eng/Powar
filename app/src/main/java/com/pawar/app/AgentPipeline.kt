@@ -173,7 +173,12 @@ class DynamicAgentPipeline(context: Context) {
                         emit(PipelineStage.REEVALUATE, "Re-evaluating plan", "Creation returned a real workspace with ${state.workspace!!.listFiles().size} file(s); the plan now moves to verification.")
                         if (profile.outputMode == OutputMode.ZIP_OUTPUT) {
                             val packaged = packageWorkspace(state, toolRegistry)
-                            if (packaged != null) emit(PipelineStage.PACKAGE, "Preparing ZIP", packaged)
+                            if (packaged != null) {
+                                emit(PipelineStage.PACKAGE, "Preparing ZIP", packaged)
+                            } else {
+                                state.status = AgentStatus.BLOCKED
+                                emit(PipelineStage.PACKAGE, "ZIP packaging failed", "The workspace was created, but the ZIP artifact could not be produced.", outcome = ActionOutcome.Failed)
+                            }
                         }
                     } else {
                         state.status = AgentStatus.BLOCKED
@@ -200,6 +205,16 @@ class DynamicAgentPipeline(context: Context) {
                     if (openedResult.isSuccess) {
                         state.workspace = openedResult.getOrThrow()
                         state.workspaceSummary = workspaceSummary(state.workspace!!)
+                        val diagnostics = executeAction(
+                            PipelineStage.SEARCH_FILES,
+                            "Checking project files for errors",
+                            "Running read-only static diagnostics over the extracted workspace; project code is not executed.",
+                            toolId = "static-project-diagnostics"
+                        ) { toolRegistry.diagnose(state.workspace!!) }
+                        if (diagnostics.isSuccess) {
+                            toolResults += diagnostics.getOrThrow()
+                            state.lastToolResults = toolResults.toList()
+                        }
                     } else {
                         state.status = AgentStatus.BLOCKED
                         emit(PipelineStage.RESULT, "Project workspace unavailable", openedResult.exceptionOrNull()?.message ?: "ZIP workspace could not be opened.", outcome = ActionOutcome.Failed)
@@ -220,6 +235,16 @@ class DynamicAgentPipeline(context: Context) {
                     if (openedResult.isSuccess) {
                         state.workspace = openedResult.getOrThrow()
                         state.workspaceSummary = workspaceSummary(state.workspace!!)
+                        val diagnostics = executeAction(
+                            PipelineStage.SEARCH_FILES,
+                            "Finding likely errors",
+                            "Running read-only static diagnostics before any edit decision; project code is not executed.",
+                            toolId = "static-project-diagnostics"
+                        ) { toolRegistry.diagnose(state.workspace!!) }
+                        if (diagnostics.isSuccess) {
+                            toolResults += diagnostics.getOrThrow()
+                            state.lastToolResults = toolResults.toList()
+                        }
                         state.status = AgentStatus.BLOCKED
                         emit(
                             PipelineStage.EDIT,
@@ -284,7 +309,12 @@ class DynamicAgentPipeline(context: Context) {
     private fun resolveContinuation(request: AgentRequest, previousRun: PipelineRun?): AgentRequest {
         if (previousRun?.status != AgentStatus.WAITING_FOR_USER || previousRun.clarification == null) return request
         val answer = request.text.trim()
-        val option = previousRun.options.firstOrNull { it.id.equals(answer, ignoreCase = true) }
+        val normalizedAnswer = answer.lowercase()
+        val option = previousRun.options.firstOrNull { option ->
+            option.id.equals(answer, ignoreCase = true) ||
+                option.title.lowercase() == normalizedAnswer ||
+                normalizedAnswer == option.title.lowercase().removePrefix("fix ")
+        }
         val mergedText = if (option != null) {
             val marker = when (option.title) {
                 "Write code" -> "[CODE_REQUEST]"
@@ -458,9 +488,16 @@ private object VerificationEngine {
         if (state.workspace != null) checks += "Workspace canonical-path and bounded file operations are active."
         if (state.packagePath != null) checks += "A real ZIP artifact was created from the workspace."
         val failed = results.any { !it.success }
+        val boundaryBlocked = state.status == AgentStatus.BLOCKED
         return VerificationResult(
-            success = !failed && state.status != AgentStatus.BLOCKED,
-            detail = if (failed) "Verification found a failed local inspection result." else "State, tool results and local execution boundaries were checked without build/device execution.",
+            // Verification answers whether the checks themselves completed. A blocked
+            // task is still allowed to have successful verification of its evidence/safety.
+            success = !failed,
+            detail = when {
+                failed -> "Verification found a failed local tool operation."
+                boundaryBlocked -> "Verification checks passed; task remains blocked at an unavailable capability boundary. No build/device execution was performed."
+                else -> "State, tool results and local execution boundaries were checked without build/device execution."
+            },
             checks = checks
         )
     }
@@ -468,6 +505,14 @@ private object VerificationEngine {
 
 private object FinalResponseEngine {
     fun build(state: AgentState): String {
+        val diagnostic = state.lastToolResults.firstOrNull { it.toolId == "static-project-diagnostics" }
+        if (diagnostic != null) {
+            val workspace = state.workspaceSummary?.let { "\nWorkspace: $it" }.orEmpty()
+            val boundary = if (state.status == AgentStatus.BLOCKED) {
+                "\nStatic findings report ho gaye; automatic code edit ke liye connected code-generation runtime abhi available nahi hai."
+            } else ""
+            return "Project ko read-only inspect kiya.\n${diagnostic.summary}.\n${diagnostic.detail}$workspace$boundary"
+        }
         if (state.status == AgentStatus.BLOCKED) {
             val workspace = state.workspaceSummary?.let { " Workspace: $it" }.orEmpty()
             return "Request samajh liya, lekin required capability boundary par run ruk gaya. Koi fake change/result claim nahi kiya.$workspace"
