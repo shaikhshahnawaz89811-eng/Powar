@@ -22,7 +22,11 @@ set(LLAMA_BUILD_SERVER OFF CACHE BOOL "" FORCE)
 set(LLAMA_CURL OFF CACHE BOOL "" FORCE)
 # llama.cpp decoupled the `common` utility library from LLAMA_BUILD_EXAMPLES
 # a while back -- it now has its own gate. pawar_llama_jni.cpp links against
-# `common`, so this must be ON even though we don't build the examples.
+# it, so this must be ON even though we don't build the examples. Note: the
+# CMake *target* for this library has also been renamed over time (it was
+# `common`, now `llama-common` as of v0.4.0) -- if a future bump of
+# PAWAR_LLAMA_CPP_TAG fails at the link step with "unable to find library",
+# check llama.cpp's common/CMakeLists.txt for the current target name.
 set(LLAMA_BUILD_COMMON ON CACHE BOOL "" FORCE)
 
 set(PAWAR_LLAMA_CPP_TAG "v0.4.0" CACHE STRING
@@ -49,7 +53,7 @@ add_library(pawar_llama SHARED
 
 target_link_libraries(pawar_llama
     llama
-    common
+    llama-common
     android
     log
 )
