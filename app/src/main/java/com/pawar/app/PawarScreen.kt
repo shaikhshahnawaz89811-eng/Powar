@@ -2,6 +2,7 @@ package com.pawar.app
 
 import android.content.Context
 import android.net.Uri
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,7 +29,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.onFocusChanged
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -45,7 +45,8 @@ fun PawarScreen(modelManager: ModelManager, onOpenSettings: () -> Unit) {
     var input by remember { mutableStateOf("") }
     var attachmentMenuOpen by remember { mutableStateOf(false) }
     val composerAttachments = remember { mutableStateListOf<Attachment>() }
-    val sentMessages = remember { mutableStateListOf<SentMessage>() }
+    val conversationTurns = remember { mutableStateListOf<ConversationTurn>() }
+    val pipeline = remember(context) { DynamicAgentPipeline(context) }
     var cameraUri by remember { mutableStateOf<Uri?>(null) }
     val messageListState = rememberLazyListState()
     val uiScope = rememberCoroutineScope()
@@ -111,20 +112,57 @@ fun PawarScreen(modelManager: ModelManager, onOpenSettings: () -> Unit) {
         )
     }
 
-    fun send() {
-        val trimmed = input.trim()
+    fun shareArtifact(path: String) {
+        val file = File(path)
+        if (!file.isFile) return
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/zip"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            clipData = android.content.ClipData.newRawUri("Pawar ZIP", uri)
+        }
+        context.startActivity(Intent.createChooser(intent, "Share Pawar ZIP"))
+    }
+
+    fun send(textOverride: String? = null) {
+        val trimmed = (textOverride ?: input).trim()
         if (trimmed.isNotEmpty() || composerAttachments.isNotEmpty()) {
-            sentMessages.add(SentMessage(trimmed, composerAttachments.toList()))
+            val message = SentMessage(trimmed, composerAttachments.toList())
+            val previousRun = conversationTurns.lastOrNull()?.pipeline
+                ?.takeIf { it.status == AgentStatus.WAITING_FOR_USER }
+            val turnIndex = conversationTurns.size
+            conversationTurns.add(ConversationTurn(message))
             input = ""
             composerAttachments.clear()
             attachmentMenuOpen = false
+            uiScope.launch {
+                pipeline.execute(
+                    request = AgentRequest(
+                        text = message.text,
+                        attachments = message.attachments,
+                        modelLoaded = modelManager.loaded
+                    ),
+                    previousRun = previousRun,
+                    onUpdate = { run ->
+                        if (turnIndex in conversationTurns.indices) {
+                            conversationTurns[turnIndex] = conversationTurns[turnIndex].copy(pipeline = run)
+                        }
+                    }
+                )
+            }
         }
     }
 
     // Keep the newest message visible after sending. This is the same bottom-anchored
     // behavior expected from a chat thread rather than leaving the user in the old viewport.
-    LaunchedEffect(sentMessages.size) {
-        if (sentMessages.isNotEmpty()) {
+    LaunchedEffect(conversationTurns.size, conversationTurns.lastOrNull()?.pipeline) {
+        if (conversationTurns.isNotEmpty()) {
+            kotlinx.coroutines.yield()
             messageListState.animateScrollToItem(messageListState.layoutInfo.totalItemsCount.coerceAtLeast(1) - 1)
         }
     }
@@ -151,15 +189,19 @@ fun PawarScreen(modelManager: ModelManager, onOpenSettings: () -> Unit) {
                     .fillMaxWidth(),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 20.dp)
             ) {
-                item(key = "reference") {
-                    ReferenceConversation()
-                }
                 itemsIndexed(
-                    items = sentMessages,
-                    key = { index, _ -> "sent-$index" }
-                ) { _, message ->
+                    items = conversationTurns,
+                    key = { index, _ -> "turn-$index" }
+                ) { _, turn ->
                     Spacer(Modifier.height(24.dp))
-                    UserMessageWithAttachments(message)
+                    UserMessageWithAttachments(turn.message)
+                    turn.pipeline?.let { run ->
+                        PipelineRunView(
+                            run,
+                            onOptionSelected = { option -> send(option.id) },
+                            onShareArtifact = ::shareArtifact
+                        )
+                    }
                 }
             }
 

@@ -14,3 +14,8 @@ data class SentMessage(
     val text: String,
     val attachments: List<Attachment>
 )
+
+data class ConversationTurn(
+    val message: SentMessage,
+    val pipeline: PipelineRun? = null
+)
