@@ -119,32 +119,20 @@ fun Composer(
                     textStyle = TextStyle(color = Color(0xFF5D5E5B), fontSize = 18.sp),
                     decorator = { inner ->
                         // Overlay the hint and the real text in the same box so the field
-                        // always claims its full weighted width — this is what was letting
-                        // the model badge slide over and cover the input area.
+                        // always claims its full weighted width.
                         Box(
                             modifier = Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.CenterStart
                         ) {
                             if (textState.text.isEmpty()) {
-                                Text("Reply", color = Color(0xFFB6B7B4), fontSize = 20.sp)
+                                Text("Type a message", color = Color(0xFFB6B7B4), fontSize = 20.sp)
                             }
                             inner()
                         }
                     }
                 )
 
-                Box(
-                    modifier = Modifier
-                        .height(50.dp)
-                        .widthIn(min = 0.dp, max = 190.dp)
-                        .clip(RoundedCornerShape(28.dp))
-                        .border(1.dp, Color(0xFFE0E1DE), RoundedCornerShape(28.dp))
-                        .padding(horizontal = 14.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Qwen2.5-Coder · Q4_K_M", color = Color(0xFF777975), fontSize = 13.sp, maxLines = 1)
-                }
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(12.dp))
                 Box(
                     modifier = Modifier.size(54.dp).clip(CircleShape).background(Color(0xFF151515)).clickable(onClick = onSend),
                     contentAlignment = Alignment.Center

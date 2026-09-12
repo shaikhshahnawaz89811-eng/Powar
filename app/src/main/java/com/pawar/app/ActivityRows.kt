@@ -21,7 +21,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-enum class RowIcon { CLOCK, FOLDER }
+enum class RowIcon { CLOCK, FILE_CREATED }
 
 @Composable
 fun ThinDivider() {
@@ -36,7 +36,7 @@ fun ActivityRow(leading: RowIcon, text: String, trailing: String? = null, showCh
     ) {
         when (leading) {
             RowIcon.CLOCK -> ClockIcon()
-            RowIcon.FOLDER -> FolderOutlineIcon()
+            RowIcon.FILE_CREATED -> FileCreatedIcon()
         }
         Spacer(Modifier.width(14.dp))
         Text(
@@ -63,7 +63,7 @@ fun ActivityRow(leading: RowIcon, text: String, trailing: String? = null, showCh
 @Composable
 private fun ClockIcon() {
     Box(Modifier.size(28.dp)) {
-        Canvas(Modifier.fillMaxWidth()) {
+        Canvas(Modifier.fillMaxSize()) {
             drawCircle(androidx.compose.ui.graphics.Color(0xFF9A9C98), size.minDimension * 0.39f, center, style = Stroke(2.2.dp.toPx()))
             drawLine(androidx.compose.ui.graphics.Color(0xFF9A9C98), Offset(size.width * .50f, size.height * .50f), Offset(size.width * .50f, size.height * .29f), 2.2.dp.toPx(), StrokeCap.Round)
             drawLine(androidx.compose.ui.graphics.Color(0xFF9A9C98), Offset(size.width * .50f, size.height * .50f), Offset(size.width * .66f, size.height * .57f), 2.2.dp.toPx(), StrokeCap.Round)
@@ -71,20 +71,32 @@ private fun ClockIcon() {
     }
 }
 
+// Small file-with-a-plus icon shown whenever a row represents a file being
+// created. Sized to sit level with the row's text, not a full-size icon.
 @Composable
-private fun FolderOutlineIcon() {
-    Box(Modifier.size(32.dp)) {
-        Canvas(Modifier.fillMaxWidth()) {
+private fun FileCreatedIcon() {
+    Box(Modifier.size(18.dp)) {
+        Canvas(Modifier.fillMaxSize()) {
+            val fileColor = androidx.compose.ui.graphics.Color(0xFF9A9C98)
             val path = Path().apply {
-                moveTo(size.width * .10f, size.height * .29f)
-                lineTo(size.width * .40f, size.height * .29f)
-                lineTo(size.width * .50f, size.height * .42f)
-                lineTo(size.width * .89f, size.height * .42f)
-                lineTo(size.width * .89f, size.height * .82f)
-                lineTo(size.width * .10f, size.height * .82f)
+                moveTo(size.width * .18f, size.height * .06f)
+                lineTo(size.width * .60f, size.height * .06f)
+                lineTo(size.width * .82f, size.height * .28f)
+                lineTo(size.width * .82f, size.height * .94f)
+                lineTo(size.width * .18f, size.height * .94f)
                 close()
             }
-            drawPath(path, androidx.compose.ui.graphics.Color(0xFF9A9C98), style = Stroke(2.1.dp.toPx()))
+            drawPath(path, fileColor, style = Stroke(1.6.dp.toPx()))
+            // fold corner
+            drawLine(fileColor, Offset(size.width * .60f, size.height * .06f), Offset(size.width * .60f, size.height * .28f), 1.6.dp.toPx(), StrokeCap.Round)
+            drawLine(fileColor, Offset(size.width * .60f, size.height * .28f), Offset(size.width * .82f, size.height * .28f), 1.6.dp.toPx(), StrokeCap.Round)
+            // plus sign, badge-style, bottom-right of the file
+            val plusColor = AppColors.Green
+            val cx = size.width * .78f
+            val cy = size.height * .78f
+            val arm = size.width * .16f
+            drawLine(plusColor, Offset(cx - arm, cy), Offset(cx + arm, cy), 1.8.dp.toPx(), StrokeCap.Round)
+            drawLine(plusColor, Offset(cx, cy - arm), Offset(cx, cy + arm), 1.8.dp.toPx(), StrokeCap.Round)
         }
     }
 }

@@ -29,7 +29,7 @@ fun ReferenceConversation() {
     ThinDivider()
 
     ActivityRow(
-        leading = RowIcon.FOLDER,
+        leading = RowIcon.FILE_CREATED,
         text = "Student.kt",
         trailing = "Created  ·  12 lines",
         showChevron = true
