@@ -25,7 +25,10 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.9
+          # AGP (com.android.application) 9.4.0, used in app/build.gradle.kts,
+          # requires Gradle 9.6.0 or newer. If you bump the AGP version later,
+          # check its required minimum Gradle version and bump this too.
+          gradle-version: 9.6.1
 
       - name: Build debug APK
         run: gradle :app:assembleDebug --stacktrace
