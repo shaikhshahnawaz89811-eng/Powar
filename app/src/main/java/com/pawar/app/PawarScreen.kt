@@ -21,14 +21,9 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -40,16 +35,20 @@ import androidx.core.content.FileProvider
 import java.io.File
 
 @Composable
-fun PawarScreen(modelManager: ModelManager, onOpenSettings: () -> Unit) {
+fun PawarScreen(
+    modelManager: ModelManager,
+    chatState: ChatSessionState,
+    pipeline: DynamicAgentPipeline,
+    uiScope: CoroutineScope,
+    onOpenSettings: () -> Unit
+) {
     val context = LocalContext.current
-    var input by remember { mutableStateOf("") }
-    var attachmentMenuOpen by remember { mutableStateOf(false) }
-    val composerAttachments = remember { mutableStateListOf<Attachment>() }
-    val conversationTurns = remember { mutableStateListOf<ConversationTurn>() }
-    val pipeline = remember(context, modelManager) { DynamicAgentPipeline(context, modelManager) }
-    var cameraUri by remember { mutableStateOf<Uri?>(null) }
+    // These all live on chatState now (hoisted up to MainActivity) instead of being
+    // `remember`-ed in this composable, so navigating to Settings and back doesn't
+    // reset them.
+    val composerAttachments = chatState.composerAttachments
+    val conversationTurns = chatState.conversationTurns
     val messageListState = rememberLazyListState()
-    val uiScope = rememberCoroutineScope()
 
     val photoPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -73,13 +72,13 @@ fun PawarScreen(modelManager: ModelManager, onOpenSettings: () -> Unit) {
     val cameraCapture = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
-        val uri = cameraUri
+        val uri = chatState.cameraUri
         if (success && uri != null) {
             composerAttachments.add(Attachment(uri, "Photo", AttachmentKind.IMAGE))
         } else if (!success && uri != null) {
             context.contentResolver.delete(uri, null, null)
         }
-        cameraUri = null
+        chatState.cameraUri = null
     }
 
     fun openCamera() {
@@ -89,20 +88,20 @@ fun PawarScreen(modelManager: ModelManager, onOpenSettings: () -> Unit) {
             "${context.packageName}.fileprovider",
             file
         )
-        cameraUri = uri
-        attachmentMenuOpen = false
+        chatState.cameraUri = uri
+        chatState.attachmentMenuOpen = false
         cameraCapture.launch(uri)
     }
 
     fun openPhotos() {
-        attachmentMenuOpen = false
+        chatState.attachmentMenuOpen = false
         photoPicker.launch(
             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
         )
     }
 
     fun openZip() {
-        attachmentMenuOpen = false
+        chatState.attachmentMenuOpen = false
         zipPicker.launch(
             arrayOf(
                 "application/zip",
@@ -130,7 +129,7 @@ fun PawarScreen(modelManager: ModelManager, onOpenSettings: () -> Unit) {
     }
 
     fun send(textOverride: String? = null, continuationRun: PipelineRun? = null) {
-        val trimmed = (textOverride ?: input).trim()
+        val trimmed = (textOverride ?: chatState.input).trim()
         if (trimmed.isNotEmpty() || composerAttachments.isNotEmpty()) {
             val message = SentMessage(trimmed, composerAttachments.toList())
             val previousRun = continuationRun ?: conversationTurns.asReversed()
@@ -138,9 +137,9 @@ fun PawarScreen(modelManager: ModelManager, onOpenSettings: () -> Unit) {
                 .firstOrNull { it.status == AgentStatus.WAITING_FOR_USER }
             val turnIndex = conversationTurns.size
             conversationTurns.add(ConversationTurn(message))
-            input = ""
+            chatState.input = ""
             composerAttachments.clear()
-            attachmentMenuOpen = false
+            chatState.attachmentMenuOpen = false
             uiScope.launch {
                 pipeline.execute(
                     request = AgentRequest(
@@ -213,13 +212,13 @@ fun PawarScreen(modelManager: ModelManager, onOpenSettings: () -> Unit) {
                     .fillMaxWidth()
                     .imePadding()
             ) {
-                if (attachmentMenuOpen) {
+                if (chatState.attachmentMenuOpen) {
                     Popup(
                         alignment = Alignment.BottomStart,
                         offset = with(LocalDensity.current) {
                             IntOffset(0, (-104).dp.roundToPx())
                         },
-                        onDismissRequest = { attachmentMenuOpen = false },
+                        onDismissRequest = { chatState.attachmentMenuOpen = false },
                         properties = PopupProperties(focusable = true, dismissOnClickOutside = true)
                     ) {
                         AttachmentMenu(
@@ -232,10 +231,10 @@ fun PawarScreen(modelManager: ModelManager, onOpenSettings: () -> Unit) {
                 }
 
                 Composer(
-                    value = input,
+                    value = chatState.input,
                     attachments = composerAttachments,
-                    onValueChange = { input = it },
-                    onPlus = { attachmentMenuOpen = !attachmentMenuOpen },
+                    onValueChange = { chatState.input = it },
+                    onPlus = { chatState.attachmentMenuOpen = !chatState.attachmentMenuOpen },
                     onRemoveAttachment = { composerAttachments.remove(it) },
                     onInputFocused = {
                         if (messageListState.layoutInfo.totalItemsCount > 0) {

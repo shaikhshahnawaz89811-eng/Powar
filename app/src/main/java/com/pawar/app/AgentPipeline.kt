@@ -124,37 +124,46 @@ class DynamicAgentPipeline(context: Context, modelManager: ModelManager) {
             return finish(state, steps, toolResults, optionsText(state.options), onUpdate)
         }
 
+        // Shared by every branch that can end in a plain generated-text answer
+        // (CODE_ONLY, and any other intent that decides a code response fits
+        // better than a project scaffold or a blocked edit). Defined once here
+        // so a real, loaded module is always actually tried before anything
+        // reports the "no runtime connected" boundary.
+        suspend fun attemptLocalCodeGeneration(): PipelineRun {
+            val generationResult = executeAction(
+                PipelineStage.CODE_ONLY,
+                "Generating code locally",
+                "Running the loaded module through llama.cpp to answer the request.",
+                toolId = toolRegistry.codeGenerationCapability.id
+            ) { toolRegistry.generateCode(effectiveRequest.text).getOrThrow() }
+
+            return generationResult.fold(
+                onSuccess = { code ->
+                    state.status = AgentStatus.COMPLETED
+                    finish(state, steps, toolResults, code, onUpdate)
+                },
+                onFailure = { error ->
+                    emit(
+                        PipelineStage.CODE_ONLY,
+                        "Local generation unavailable",
+                        error.message ?: "Local code generation failed.",
+                        outcome = ActionOutcome.Blocked
+                    )
+                    state.status = AgentStatus.BLOCKED
+                    finish(
+                        state,
+                        steps,
+                        toolResults,
+                        "Module loaded hai, lekin local generation complete nahi ho paya: ${error.message}. Koi fake code nahi diya gaya.",
+                        onUpdate
+                    )
+                }
+            )
+        }
+
         if (profile.outputMode == OutputMode.CODE_ONLY) {
             if (effectiveRequest.modelLoaded) {
-                val generationResult = executeAction(
-                    PipelineStage.CODE_ONLY,
-                    "Generating code locally",
-                    "Running the loaded module through llama.cpp to answer the code-only request.",
-                    toolId = toolRegistry.codeGenerationCapability.id
-                ) { toolRegistry.generateCode(effectiveRequest.text).getOrThrow() }
-
-                return generationResult.fold(
-                    onSuccess = { code ->
-                        state.status = AgentStatus.COMPLETED
-                        finish(state, steps, toolResults, code, onUpdate)
-                    },
-                    onFailure = { error ->
-                        emit(
-                            PipelineStage.CODE_ONLY,
-                            "Local generation unavailable",
-                            error.message ?: "Local code generation failed.",
-                            outcome = ActionOutcome.Blocked
-                        )
-                        state.status = AgentStatus.BLOCKED
-                        finish(
-                            state,
-                            steps,
-                            toolResults,
-                            "Module loaded hai, lekin local generation complete nahi ho paya: ${error.message}. Koi fake code nahi diya gaya.",
-                            onUpdate
-                        )
-                    }
-                )
+                return attemptLocalCodeGeneration()
             }
             emit(
                 PipelineStage.CODE_ONLY,
@@ -220,8 +229,11 @@ class DynamicAgentPipeline(context: Context, modelManager: ModelManager) {
                         emit(PipelineStage.CREATE, "Creation needs a workspace decision", "A project attachment was supplied with a CREATE request; Pawar will not overwrite it without a clear target.", outcome = ActionOutcome.Blocked)
                     }
                 } else {
+                    if (effectiveRequest.modelLoaded) {
+                        return attemptLocalCodeGeneration()
+                    }
                     state.status = AgentStatus.BLOCKED
-                    emit(PipelineStage.CODE_ONLY, "Waiting for code-generation capability", "This CREATE request is a code response rather than a project scaffold. No connected code-generation runtime is available in this build.", outcome = ActionOutcome.Blocked)
+                    emit(PipelineStage.CODE_ONLY, "Waiting for code-generation capability", "This CREATE request needs code generation, but no local module is loaded (or the native library is not built yet). No fake code was generated.", outcome = ActionOutcome.Blocked)
                 }
             }
             TaskIntent.INSPECT, TaskIntent.EXPLAIN -> {

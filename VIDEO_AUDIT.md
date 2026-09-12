@@ -69,3 +69,50 @@ Fixes applied:
 Model-state harness result: `MODEL_STATE_TEST_PASS` (load -> loaded -> repeated load -> unload -> repeated unload).
 
 Important runtime distinction: process death/OS kill necessarily destroys an in-memory mapping. On a fresh process the module is correctly shown as `Ready`, not falsely `Loaded`; the user can Load it again. The current code still maps/validates the GGUF but does not contain a native inference engine.
+
+## Third audit — CREATE-branch routing bug found and fixed, 2026-09-12
+
+A 6.7s recording was reviewed (frame extraction; no network/whisper in this
+sandbox, so audio was not transcribed). Three requests all produced the
+identical generic blocked response even with a module showing **Loaded** in
+Settings: `create 2 line python code`, `create web app for shipping Market`,
+and `calculator bannao` followed by tapping the "Write code" clarification
+option.
+
+**Root cause (found by source trace, not by running the app — no
+Gradle/NDK/device here either):** none of the three ever reached the
+`OutputMode.CODE_ONLY` branch that the previous native-inference pass wired
+to real generation. `TaskPlanner` only sets `CODE_ONLY` for an explicit
+`sirf/only/just/bas ... code` phrase; a plain "create/banao" request instead
+became `TaskIntent.CREATE` + `OutputMode.NORMAL_RESPONSE`, and that branch's
+non-project `else` case in `AgentPipeline.kt` unconditionally reported "No
+connected code-generation runtime is available" — it never checked
+`effectiveRequest.modelLoaded` and never called `toolRegistry.generateCode(...)`.
+Selecting "Write code" doesn't help either: it re-enters the classifier with
+a `[CODE_REQUEST]` marker that sets `intent = CREATE` but still not
+`outputMode = CODE_ONLY`, so it lands in the same dead-end. The generic
+"...capability boundary..." verification/final-response text is a shared
+`AgentStatus.BLOCKED` fallback, which is why every phrasing looked identical
+and gave no clue the real problem was "this branch never tries" rather than
+"the module isn't loaded."
+
+**Fix applied:** the generation attempt that only lived inside the
+`CODE_ONLY` check was pulled into a local `attemptLocalCodeGeneration()`
+function in `AgentPipeline.kt`, now also called from the CREATE branch's
+non-project `else` case whenever `effectiveRequest.modelLoaded` is true. A
+loaded module is now actually tried before either branch reports a
+boundary, and a genuine generation failure surfaces
+`LlamaCodeGenerationCapability`'s real error instead of the generic one.
+
+**What this does not establish:** checked by hand-tracing and a
+brace/paren-balance script only — still no kotlinc/NDK/Gradle/device
+available to compile or run this. Whether these phrasings now return real
+text depends entirely on whether `pawar_llama` actually built for the
+running APK, which nothing in this pass could verify either way. If it did,
+these three phrasings should now generate for real; if it didn't, they'll
+now show the specific "Native inference library is not built yet..."
+reason instead of the misleading generic one. `TaskPlanner`'s phrase list
+was deliberately left unchanged — narrowing which exact wordings count as
+"just code" is a separate design question from the bug actually shown here,
+which was that the working generation path was simply unreachable from a
+whole branch.
