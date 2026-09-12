@@ -37,26 +37,48 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
+private fun formatModuleSize(bytes: Long): String {
+    if (bytes <= 0L) return ""
+    val gb = bytes / 1024.0 / 1024.0 / 1024.0
+    return if (gb >= 0.1) "%.2f GB".format(gb) else "%.0f MB".format(bytes / 1024.0 / 1024.0)
+}
+
 @Composable
 fun ModuleSettingsScreen(manager: ModelManager, onBack: () -> Unit) {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    var status by remember { mutableStateOf(if (manager.exists) ModuleStatus.LOADING else ModuleStatus.NOT_IMPORTED) }
-    var busy by remember { mutableStateOf(manager.exists) }
+    var status by remember { mutableStateOf(when { manager.loaded -> ModuleStatus.LOADED; manager.exists -> ModuleStatus.LOADING; else -> ModuleStatus.NOT_IMPORTED }) }
+    var busy by remember { mutableStateOf(manager.exists && !manager.loaded) }
     var error by remember { mutableStateOf<String?>(null) }
     var hash by remember { mutableStateOf("") }
+    var sizeLabel by remember { mutableStateOf(if (manager.exists) formatModuleSize(manager.file.length()) else "") }
 
     androidx.compose.runtime.LaunchedEffect(manager) {
         if (manager.exists) {
-            val validation = manager.validateStoredModel()
-            busy = false
-            validation.onSuccess {
-                status = ModuleStatus.READY
+            // Do not downgrade an already-loaded module back to READY when the
+            // settings screen is recreated or reopened. The ModelManager is process-
+            // scoped, so a valid active mapping must remain visibly Loaded.
+            if (manager.loaded) {
+                busy = false
+                status = ModuleStatus.LOADED
                 error = null
                 hash = manager.sha256()
-            }.onFailure {
-                status = ModuleStatus.ERROR
-                error = it.message ?: "Stored module is invalid."
+                sizeLabel = formatModuleSize(manager.file.length())
+            } else {
+                val validation = manager.validateStoredModel()
+                busy = false
+                validation.onSuccess {
+                    status = ModuleStatus.READY
+                    error = null
+                    hash = manager.sha256()
+                    sizeLabel = formatModuleSize(manager.file.length())
+                }.onFailure {
+                    status = ModuleStatus.ERROR
+                    error = it.message ?: "Stored module is invalid."
+                }
             }
+        } else {
+            busy = false
+            status = ModuleStatus.NOT_IMPORTED
         }
     }
 
@@ -67,8 +89,10 @@ fun ModuleSettingsScreen(manager: ModelManager, onBack: () -> Unit) {
             error = null
             if (success == ModuleStatus.READY || success == ModuleStatus.LOADED) {
                 scope.launch { hash = manager.sha256() }
+                sizeLabel = formatModuleSize(manager.file.length())
             } else {
                 hash = ""
+                sizeLabel = ""
             }
         }.onFailure {
             status = failureStatus
@@ -102,6 +126,7 @@ fun ModuleSettingsScreen(manager: ModelManager, onBack: () -> Unit) {
                 status = status,
                 busy = busy,
                 hash = hash,
+                sizeLabel = sizeLabel,
                 onImport = {
                     if (!busy && status != ModuleStatus.LOADED) importer.launch(arrayOf("application/octet-stream", "application/*", "*/*"))
                 },
@@ -160,6 +185,7 @@ private fun ModuleCard(
     status: ModuleStatus,
     busy: Boolean,
     hash: String,
+    sizeLabel: String,
     onImport: () -> Unit,
     onLoad: () -> Unit,
     onUnload: () -> Unit,
@@ -178,7 +204,11 @@ private fun ModuleCard(
             Column(Modifier.weight(1f)) {
                 Text("Qwen2.5-Coder", color = AppColors.PrimaryText, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(ModelManager.EXPECTED_FILE_NAME, color = AppColors.SecondaryText, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("1.04 GB · Q4_K_M · GGUF", color = AppColors.SecondaryText, fontSize = 12.sp)
+                Text(
+                    if (sizeLabel.isNotEmpty()) "$sizeLabel · Q4_K_M · GGUF" else "Q4_K_M · GGUF",
+                    color = AppColors.SecondaryText,
+                    fontSize = 12.sp
+                )
             }
             StatusPill(status)
         }

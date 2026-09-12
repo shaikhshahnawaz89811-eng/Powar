@@ -46,7 +46,7 @@ fun PawarScreen(modelManager: ModelManager, onOpenSettings: () -> Unit) {
     var attachmentMenuOpen by remember { mutableStateOf(false) }
     val composerAttachments = remember { mutableStateListOf<Attachment>() }
     val conversationTurns = remember { mutableStateListOf<ConversationTurn>() }
-    val pipeline = remember(context) { DynamicAgentPipeline(context) }
+    val pipeline = remember(context, modelManager) { DynamicAgentPipeline(context, modelManager) }
     var cameraUri by remember { mutableStateOf<Uri?>(null) }
     val messageListState = rememberLazyListState()
     val uiScope = rememberCoroutineScope()

@@ -11,7 +11,7 @@ import java.util.zip.ZipFile
  * Local capability registry. Every result is real and structured; unavailable
  * capabilities are not represented as successful fake tool calls.
  */
-class LocalToolRegistry(context: Context) {
+class LocalToolRegistry(context: Context, modelManager: ModelManager) {
     private val appContext = context.applicationContext
     private val tools: List<LocalPipelineTool> = listOf(
         ZipInspectionTool(appContext),
@@ -20,6 +20,7 @@ class LocalToolRegistry(context: Context) {
 
     val projectWorkspaceCapability: ProjectWorkspaceCapability = LocalProjectWorkspaceCapability(appContext)
     val projectGeneratorCapability: ProjectGeneratorCapability = LocalProjectGeneratorCapability(appContext)
+    val codeGenerationCapability: LlamaCodeGenerationCapability = LlamaCodeGenerationCapability(modelManager)
 
     fun appCacheDir(): File = appContext.cacheDir
 
@@ -29,8 +30,11 @@ class LocalToolRegistry(context: Context) {
         "image-metadata",
         "static-project-diagnostics",
         projectWorkspaceCapability.id,
-        projectGeneratorCapability.id
+        projectGeneratorCapability.id,
+        codeGenerationCapability.id
     )
+
+    suspend fun generateCode(request: String): Result<String> = codeGenerationCapability.generate(request)
 
     suspend fun openProjectWorkspace(attachment: Attachment): Result<ProjectWorkspace> =
         projectWorkspaceCapability.open(attachment)

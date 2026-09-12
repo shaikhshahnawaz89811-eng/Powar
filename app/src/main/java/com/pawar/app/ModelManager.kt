@@ -3,6 +3,8 @@ package com.pawar.app
 import android.content.Context
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.RandomAccessFile
@@ -15,7 +17,10 @@ import java.security.MessageDigest
  * This step intentionally implements only safe import, validation, load and unload.
  * Inference is not claimed here; a llama.cpp/native runtime will be wired in later.
  */
-class ModelManager(private val context: Context) {
+class ModelManager private constructor(private val context: Context) {
+    // Keeps load/unload/import/delete atomic so a lifecycle change or another action
+    // cannot race an in-progress model state transition.
+    private val operationLock = Mutex()
     private val modelDir = File(context.filesDir, "models").apply { mkdirs() }
     private val modelFile = File(modelDir, EXPECTED_FILE_NAME)
 
@@ -29,7 +34,8 @@ class ModelManager(private val context: Context) {
     val loaded: Boolean get() = mapped != null
 
     suspend fun import(uri: Uri): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching {
+        operationLock.withLock {
+            runCatching {
             if (loaded) error("Unload the module before replacing it.")
 
             val resolver = context.contentResolver
@@ -53,11 +59,13 @@ class ModelManager(private val context: Context) {
             } finally {
                 if (temp.exists()) temp.delete()
             }
+            }
         }
     }
 
     suspend fun load(): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching {
+        operationLock.withLock {
+            runCatching {
             if (loaded) return@runCatching
             if (!exists) error("Import the GGUF module first.")
 
@@ -75,11 +83,13 @@ class ModelManager(private val context: Context) {
                 runCatching { localRaf.close() }
                 throw t
             }
+            }
         }
     }
 
     suspend fun unload(): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching {
+        operationLock.withLock {
+            runCatching {
             // FileChannel.close() does not unmap an existing mapped buffer. The
             // reference is dropped here so the JVM/Android runtime can reclaim it.
             mapped = null
@@ -87,14 +97,17 @@ class ModelManager(private val context: Context) {
             runCatching { raf?.close() }
             channel = null
             raf = null
+            }
         }
     }
 
     suspend fun delete(): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching {
+        operationLock.withLock {
+            runCatching {
             if (loaded) error("Unload the module before deleting it.")
             if (modelFile.exists() && !modelFile.delete()) {
                 error("Could not delete the module.")
+            }
             }
         }
     }
@@ -183,6 +196,14 @@ class ModelManager(private val context: Context) {
     }
 
     companion object {
+        @Volatile
+        private var instance: ModelManager? = null
+
+        fun getInstance(context: Context): ModelManager =
+            instance ?: synchronized(this) {
+                instance ?: ModelManager(context.applicationContext).also { instance = it }
+            }
+
         const val EXPECTED_FILE_NAME = "qwen2.5-coder-7b-q4_k_m.gguf"
         private const val GGUF_VERSION = 3
         private const val GGUF_HEADER_BYTES = 8L

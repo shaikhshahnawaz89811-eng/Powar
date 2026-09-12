@@ -35,7 +35,7 @@ class MainActivity : ComponentActivity() {
             CompositionLocalProvider(LocalDensity provides fixedDensity) {
                 MaterialTheme {
                     var settingsOpen by rememberSaveable { mutableStateOf(false) }
-                    val modelManager = remember { ModelManager(this@MainActivity) }
+                    val modelManager = remember { ModelManager.getInstance(this@MainActivity) }
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         color = AppColors.AppBackground

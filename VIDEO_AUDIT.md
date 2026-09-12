@@ -46,3 +46,26 @@ The recording shows a Qwen model label, but the current `ModelManager` validates
 - ZIP normalized-duplicate safety fixture: PASS.
 - Existing 8 project blueprint coverage: PASS.
 - No Gradle/APK/device execution was performed.
+
+## Second module-load audit — 2026-09-12
+
+The supplied 7.56s recording was inspected at 26.59 FPS (201 frames).
+Observed state sequence:
+- Settings opens with the imported module in Ready state.
+- Load is tapped.
+- The card transitions through Loading and reaches **Loaded**.
+- The **Unload** action becomes enabled while Load/Delete are disabled.
+- The app returns to the chat screen; the header remains green/loaded in the recorded frames.
+- There is no evidence in this recording that an explicit unload occurred.
+
+A source-level lifecycle bug was nevertheless found: `ModuleSettingsScreen` initialized/validated an existing model as `READY` without checking `manager.loaded`. This could make an already mapped module appear unloaded after the settings composition was recreated. `ModelManager` was also previously created with `remember`, so an Activity recreation could replace the manager instance and lose the in-process mapped state.
+
+Fixes applied:
+1. `ModelManager` is now process-scoped via `getInstance(applicationContext)` so Activity recreation does not create a second manager and silently drop the active mapping.
+2. Settings initializes and revalidates using `manager.loaded`; a live mapping remains visibly `Loaded`.
+3. Model state-changing operations (`import`, `load`, `unload`, `delete`) are serialized with a coroutine `Mutex` to prevent races.
+4. Repeated `load()` while loaded is idempotent; repeated `unload()` is safe.
+
+Model-state harness result: `MODEL_STATE_TEST_PASS` (load -> loaded -> repeated load -> unload -> repeated unload).
+
+Important runtime distinction: process death/OS kill necessarily destroys an in-memory mapping. On a fresh process the module is correctly shown as `Ready`, not falsely `Loaded`; the user can Load it again. The current code still maps/validates the GGUF but does not contain a native inference engine.

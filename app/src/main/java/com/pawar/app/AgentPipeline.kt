@@ -11,8 +11,8 @@ import kotlinx.coroutines.yield
  * the enum is a vocabulary, not a fixed workflow. Missing capabilities stop
  * honestly at the boundary instead of producing fabricated success.
  */
-class DynamicAgentPipeline(context: Context) {
-    private val toolRegistry = LocalToolRegistry(context)
+class DynamicAgentPipeline(context: Context, modelManager: ModelManager) {
+    private val toolRegistry = LocalToolRegistry(context, modelManager)
 
     suspend fun execute(
         request: AgentRequest,
@@ -125,6 +125,37 @@ class DynamicAgentPipeline(context: Context) {
         }
 
         if (profile.outputMode == OutputMode.CODE_ONLY) {
+            if (effectiveRequest.modelLoaded) {
+                val generationResult = executeAction(
+                    PipelineStage.CODE_ONLY,
+                    "Generating code locally",
+                    "Running the loaded module through llama.cpp to answer the code-only request.",
+                    toolId = toolRegistry.codeGenerationCapability.id
+                ) { toolRegistry.generateCode(effectiveRequest.text).getOrThrow() }
+
+                return generationResult.fold(
+                    onSuccess = { code ->
+                        state.status = AgentStatus.COMPLETED
+                        finish(state, steps, toolResults, code, onUpdate)
+                    },
+                    onFailure = { error ->
+                        emit(
+                            PipelineStage.CODE_ONLY,
+                            "Local generation unavailable",
+                            error.message ?: "Local code generation failed.",
+                            outcome = ActionOutcome.Blocked
+                        )
+                        state.status = AgentStatus.BLOCKED
+                        finish(
+                            state,
+                            steps,
+                            toolResults,
+                            "Module loaded hai, lekin local generation complete nahi ho paya: ${error.message}. Koi fake code nahi diya gaya.",
+                            onUpdate
+                        )
+                    }
+                )
+            }
             emit(
                 PipelineStage.CODE_ONLY,
                 "Code-only response boundary",
@@ -136,7 +167,7 @@ class DynamicAgentPipeline(context: Context) {
                 state,
                 steps,
                 toolResults,
-                "CODE_ONLY mode selected, but no code-generation runtime is connected in this build. No fake code was generated.",
+                "CODE_ONLY mode selected, but no local module is loaded (or the native library is not built yet). No fake code was generated.",
                 onUpdate
             )
         }

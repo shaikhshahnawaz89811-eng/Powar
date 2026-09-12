@@ -13,6 +13,28 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
+
+        // arm64-v8a covers essentially all real Android phones from the last
+        // several years. Add x86_64 here too if you need an emulator build.
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
+        externalNativeBuild {
+            cmake {
+                cppFlags += "-std=c++17"
+            }
+        }
+    }
+
+    // Requires llama.cpp vendored at app/src/main/cpp/llama.cpp — see
+    // NATIVE_SETUP.md. CMake fails fast with a clear message if it is missing,
+    // so a plain `gradle assembleDebug` without it will not silently produce
+    // an APK that pretends to support local inference.
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     buildFeatures {
